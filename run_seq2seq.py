@@ -47,9 +47,6 @@ from utils.trainers.model_args import ModelArguments
 from utils.trainers.trainer_args import TrainingArguments, DataTrainingArguments
 from utils.trainers.trainer_utils import save_training_config
 
-import tensorboardX 
-tb_writer = tensorboardX.SummaryWriter('Delta_Memory')
-
 logger = logging.getLogger(__name__)
 TASK_TO_METRICS = {'mnli': ['accuracy']}
 
@@ -122,6 +119,10 @@ def main():
         model_args, data_args, training_args, delta_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
     else:
         model_args, data_args, training_args, delta_args = parser.parse_args_into_dataclasses()
+    # print('model_args', model_args)
+    # print('data_args', data_args)
+    # print('training_args', training_args)
+    # print('delta_args', delta_args)
 
     # Detecting last checkpoint.
     last_checkpoint = None
@@ -375,6 +376,8 @@ def main():
     )
 
     # # log memory info
+    # import tensorboardX 
+    # tb_writer = tensorboardX.SummaryWriter('Delta_Memory')
     # trainer.add_callback(MyCallback(trainer_args=training_args, delta_args=delta_args, model_args=model_args))
 
     # Saves training config. 
