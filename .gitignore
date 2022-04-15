@@ -1,0 +1,16 @@
+Delta_Memory/
+outputs/
+tmp/
+*.DS_Store
+*.pickle
+*.cluster
+*.pth.tar
+*.pth
+*.zip
+*.csv
+*.pyc
+*.xml
+*.out
+*.err
+*.log
+*.swp
