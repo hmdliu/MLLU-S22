@@ -46,10 +46,12 @@ class AbstractTask(abc.ABC):
                        extra_fields={}):
         src_prefix = self.name if prefix is None else prefix
         sources = [src_prefix]+sources if add_prefix else sources
-        return {'source': ' '.join(sources),
-                'target': ' '.join(targets),
-                'task': self.name,
-                'extra_fields': extra_fields}
+        return {
+            'source': ' '.join(sources),
+            'target': ' '.join(targets),
+            'task': self.name,
+            # 'extra_fields': extra_fields
+        }
 
     def check_n_obs(self, n_obs, total_size):
         if n_obs is not None and n_obs > total_size:
@@ -88,7 +90,7 @@ class AbstractTask(abc.ABC):
         else:
             return indices[validation_size:]
         
-    def map_dataset(self, dataset, add_prefix):    
+    def map_dataset(self, dataset, add_prefix):
         return dataset.map(functools.partial(self.preprocessor, add_prefix=add_prefix),
                            remove_columns=dataset.column_names)
 
@@ -242,7 +244,7 @@ class MNLI(AbstractTask):
 
 
     def load_dataset(self, split):
-        return datasets.load_dataset('glue', 'mnli', split=split, script_version="master")
+        return datasets.load_dataset('glue', 'mnli', split=split)
 
     def preprocessor(self, example, add_prefix=True):
         src_texts = ["premise:", example['premise'],

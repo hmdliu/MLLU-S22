@@ -254,10 +254,11 @@ def main():
                 [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in labels['input_ids']
             ]
         model_inputs['labels'] = labels['input_ids']
-        model_inputs['extra_fields'] = examples['extra_fields']
+        # model_inputs['extra_fields'] = examples['extra_fields']
         return model_inputs
 
-    column_names = ['source', 'target', 'extra_fields']
+    # column_names = ['source', 'target', 'extra_fields']
+    column_names = ['source', 'target']
     performance_metrics = {}
     if training_args.do_train:
         train_datasets = [AutoTask.get(dataset_name,
@@ -340,13 +341,14 @@ def main():
     eval_metrics = [AutoTask.get(dataset_name, dataset_config_name).metric\
         for dataset_name, dataset_config_name in zip(data_args.dataset_name, data_args.dataset_config_name)][0]
 
-    # Extracts the extra information needed to evaluate on each dataset.
-    # These information are only used in the compute_metrics.
-    # We will assume that the test/eval dataloader does not change the order of 
-    # the data.
-    data_info = {'eval': eval_datasets[data_args.eval_dataset_name[0]]['extra_fields'],
-                 'test': test_datasets[data_args.test_dataset_name[0]]['extra_fields'], 
-                 'train': train_dataset['extra_fields']}
+    # # Extracts the extra information needed to evaluate on each dataset.
+    # # These information are only used in the compute_metrics.
+    # # We will assume that the test/eval dataloader does not change the order of 
+    # # the data.
+    # data_info = {'eval': eval_datasets[data_args.eval_dataset_name[0]]['extra_fields'],
+    #              'test': test_datasets[data_args.test_dataset_name[0]]['extra_fields'], 
+    #              'train': train_dataset['extra_fields']}
+    data_info = None
     def compute_metrics(eval_preds):
         preds, labels, data_info = eval_preds
         post_processor = AutoPostProcessor.get(data_args.dataset_name[0], tokenizer,
@@ -372,8 +374,8 @@ def main():
         evaluation_metrics = TASK_TO_METRICS[data_args.dataset_name[0]],
     )
 
-    trainer.add_callback(MyCallback(trainer_args=training_args, delta_args=delta_args, model_args=model_args))
-
+    # # log memory info
+    # trainer.add_callback(MyCallback(trainer_args=training_args, delta_args=delta_args, model_args=model_args))
 
     # Saves training config. 
     if trainer.is_world_process_zero():
