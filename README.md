@@ -6,9 +6,9 @@
 
 ## Group Info
 Members:
-- Haoming(Hammond) Liu \
-- Xiaochen(Nigel) Lu \
-- Wenbin(Jim) Qi \
+- Haoming(Hammond) Liu
+- Xiaochen(Nigel) Lu
+- Wenbin(Jim) Qi
 
 ---
 
@@ -23,8 +23,7 @@ Members:
 ## Clone codebase
 ```
 cd /scratch/$USER
-git clone https://github.com/hmdliu/MLLU-S22
-cd MLLU-S22
+git clone https://github.com/hmdliu/MLLU-S22 && cd MLLU-S22
 ```
 
 ---
