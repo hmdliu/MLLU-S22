@@ -113,16 +113,13 @@ def main():
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
     parser = RemainArgHfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
-    if len(sys.argv) == 2 and sys.argv[1].endswith('.json'):
-        # If we pass only one argument to the script and it's the path to a json file,
-        # let's parse it to get our arguments.
+    if len(sys.argv) == 3 and sys.argv[1].endswith('.json'):
+        # sys.argv[1] => config_path: training args stored in a json file
+        # sys.argv[2] => log_dir: path to output training log
         model_args, data_args, training_args, delta_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+        log_path = os.path.abspath(sys.argv[2])
     else:
         model_args, data_args, training_args, delta_args = parser.parse_args_into_dataclasses()
-    # print('model_args', model_args)
-    # print('data_args', data_args)
-    # print('training_args', training_args)
-    # print('delta_args', delta_args)
 
     # Detecting last checkpoint.
     last_checkpoint = None
@@ -466,9 +463,10 @@ def main():
     # else:
     #     delta_model.save_finetuned(push_to_hub=False, save_directory=repo_name, use_auth_token=True)
 
-    with open('collect_result.jsonl', 'a') as fout:
-        string = json.dumps(results, indent=4,sort_keys=True)
-        fout.write(string+'\n')
+    log_dir = os.path.dirname(log_path)
+    with open(os.path.join(log_dir, 'results.jsonl'), 'a') as f:
+        string = json.dumps(results, indent=4, sort_keys=True)
+        f.write(f'{log_path}\n{string}\n\n')
     print(results)
 
 if __name__ == '__main__':
