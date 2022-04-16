@@ -28,7 +28,7 @@ git clone https://github.com/hmdliu/MLLU-S22 && cd MLLU-S22
 ---
 
 ## Test Run
-We test the [OpenDelta](https://github.com/thunlp/OpenDelta) implementation of delta tuning methods on the [MNLI](https://cims.nyu.edu/~sbowman/multinli/) dataset.
+We test the [OpenDelta](https://github.com/thunlp/OpenDelta) implementation of delta tuning methods on the [MultiNLI](https://cims.nyu.edu/~sbowman/multinli/) dataset.
 ```
 # switch to project root dir
 cd /scratch/$USER/MLLU-S22
@@ -39,7 +39,7 @@ sbatch run_seq2seq.slurm [method] [dataset]
 # check val & test results (after the job ends)
 cat log/[method]/[dataset]/results.jsonl
 ```
-Available methods:
+### Available methods
 - **Baseline**: none
 - [**Adapter**](https://arxiv.org/abs/1902.00751): adapter
 - [**BitFit**](https://arxiv.org/abs/2106.10199): bitfit
@@ -47,6 +47,6 @@ Available methods:
 - [**Prefix-Tuning**](https://arxiv.org/abs/2101.00190): prefix
 - [**Soft-prompt Tuning**](https://arxiv.org/abs/2104.08691): ~~soft_prompt~~ (buggy)
 
-Available datasets:
+### Available datasets
 - [**MultiNLI**](https://cims.nyu.edu/~sbowman/multinli/): mnli
 - *More datasets will be added soon.*
