@@ -1,6 +1,6 @@
-# MLLU-S22 Final Project Codebase
+# MLLU Final Project Codebase
 
-**Codebase adopted from [Compacter](https://github.com/rabeehk/compacter) and [OpenDelta](https://github.com/thunlp/OpenDelta).**
+**Adopted from [Compacter](https://github.com/rabeehk/compacter) and [OpenDelta](https://github.com/thunlp/OpenDelta).**
 
 ---
 

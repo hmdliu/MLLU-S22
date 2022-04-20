@@ -463,8 +463,7 @@ def main():
     # else:
     #     delta_model.save_finetuned(push_to_hub=False, save_directory=repo_name, use_auth_token=True)
 
-    log_dir = os.path.dirname(log_path)
-    with open(os.path.join(log_dir, 'results.jsonl'), 'a') as f:
+    with open(os.path.abspath('log/results.jsonl'), 'a') as f:
         string = json.dumps(results, indent=4, sort_keys=True)
         f.write(f'{log_path}\n{string}\n\n')
     print(results)
