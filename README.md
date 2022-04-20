@@ -40,11 +40,11 @@ sbatch run_seq2seq.slurm [method] [dataset]
 cat log/[method]/[dataset]/results.jsonl
 ```
 ### Available methods
-- **Baseline**: none
+- **Fine-tuning**: none
 - [**Adapter**](https://arxiv.org/abs/1902.00751): adapter
 - [**BitFit**](https://arxiv.org/abs/2106.10199): bitfit
 - [**LoRA**](https://arxiv.org/abs/2106.09685): lora
-- [**Prefix-Tuning**](https://arxiv.org/abs/2101.00190): prefix
+- [**Prefix-tuning**](https://arxiv.org/abs/2101.00190): prefix
 - [**Soft-prompt Tuning**](https://arxiv.org/abs/2104.08691): ~~soft_prompt~~ (buggy)
 
 ### Available datasets
