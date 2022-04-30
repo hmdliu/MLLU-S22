@@ -7,21 +7,9 @@ from torch.utils.data.dataset import Dataset
 from transformers import Seq2SeqTrainer as HfSeq2SeqTrainner
 from utils.trainers.trainer import BaseTrainer 
 
-# from transformers.trainer_utils import ShardedDDPOption
-
-# if is_fairscale_available():
-#     dep_version_check("fairscale")
-#     import fairscale
-#     from fairscale.nn.data_parallel import FullyShardedDataParallel as FullyShardedDDP
-#     from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
-#     from fairscale.nn.wrap import auto_wrap
-#     from fairscale.optim import OSS
-#     from fairscale.optim.grad_scaler import ShardedGradScaler
-
 from transformers.optimization import Adafactor, AdamW, get_scheduler
 from transformers.trainer_pt_utils import get_parameter_names, is_sagemaker_mp_enabled
 from transformers.integrations import is_fairscale_available
-
 
 
 if version.parse(torch.__version__) >= version.parse("1.6"):
@@ -117,8 +105,3 @@ class Seq2SeqTrainer(HfSeq2SeqTrainner, BaseTrainer):
             labels = self._pad_tensors_to_max_len(labels, gen_kwargs["max_length"])
 
         return (loss, generated_tokens, labels)
-
-    
-    
-    
-    
