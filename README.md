@@ -29,26 +29,29 @@ git clone https://github.com/hmdliu/MLLU-S22 && cd MLLU-S22
 
 ---
 
-## Test Run
-We test the [OpenDelta](https://github.com/thunlp/OpenDelta) implementation of delta tuning methods on the [MultiNLI](https://cims.nyu.edu/~sbowman/multinli/) dataset.
+## Run Experiments
 ```
 # switch to project root dir
 cd /scratch/$USER/MLLU-S22
 
-# seq2seq training based on ./configs/[method]/[dataset].json
-sbatch run_seq2seq.slurm [method] [dataset]
+# seq2seq training args:
+#  - dataset: a dataset to be trained and evaluated on
+#  - delta_type: a delta tuning method to be applied
+#  - data_ratio: ratio of training samples (between 0 and 1)
+sbatch run_seq2seq.slurm [dataset] [delta_type] [data_ratio]
 
 # check val & test results (after the job ends)
-cat log/[method]/[dataset]/results.jsonl
+cat log/[dataset]/[delta_type]/results.jsonl
 ```
-### Available methods
+### Available datasets
+- [**Yelp Polarity**](https://huggingface.co/datasets/yelp_polarity): yelp
+- [**MultiNLI**](https://huggingface.co/datasets/multi_nli): mnli
+- [**SQuAD**](https://huggingface.co/datasets/squad): squad
+- [**RACE**](https://huggingface.co/datasets/race): race
+
+### Available delta types
 - **Fine-tuning**: none
 - [**Adapter**](https://arxiv.org/abs/1902.00751): adapter
 - [**BitFit**](https://arxiv.org/abs/2106.10199): bitfit
 - [**LoRA**](https://arxiv.org/abs/2106.09685): lora
 - [**Prefix-tuning**](https://arxiv.org/abs/2101.00190): prefix
-- [**Soft-prompt Tuning**](https://arxiv.org/abs/2104.08691): ~~soft_prompt~~ (buggy)
-
-### Available datasets
-- [**MultiNLI**](https://cims.nyu.edu/~sbowman/multinli/): mnli
-- *More datasets will be added soon.*

@@ -1,6 +1,4 @@
-configs/test/
 outputs/
-log/
 tmp/
 *.DS_Store
 *.pickle

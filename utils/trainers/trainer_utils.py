@@ -51,14 +51,10 @@ def pad_punctuation(text):
    return text
 
 def save_json(filepath, dictionary):
-   with open(filepath, "w") as outfile:
+   with open(filepath, 'w') as outfile:
       json.dump(dictionary, outfile)
 
 def read_json(filepath):
    f = open(filepath,)
    return json.load(f)
-
-def save_training_config(config_file, output_dir):
-   json_data = read_json(config_file)
-   save_json(os.path.join(output_dir, "training_config.json"), json_data)
 
