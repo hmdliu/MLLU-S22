@@ -28,7 +28,7 @@ class AbstractTask(abc.ABC):
     small_datasets_without_all_splits = ["cola", "wnli", "rte", "superglue-cb", "superglue-copa", "superglue-multirc",
                                          "superglue-wic", "superglue-wsc.fixed", "superglue-rte", "mrpc", "stsb",
                                          "superglue-boolq"]
-    large_data_without_all_splits = ["qqp", "qnli", "superglue-record", "sst2"]
+    large_data_without_all_splits = ["qqp", "qnli", "superglue-record", "sst2", "yelp"]
 
     def __init__(self, config, seed=42):
         self.config = config
@@ -81,7 +81,7 @@ class AbstractTask(abc.ABC):
         return dataset.select(indices)
 
     def load_dataset(self, split: int):
-        return datasets.load_dataset(self.name, self.config, split=split, script_version="master")
+        return datasets.load_dataset(self.name, self.config, split=split)
 
     def get_split_indices(self, split, dataset, validation_size):
         indices = self.shuffled_indices(dataset)
@@ -91,6 +91,7 @@ class AbstractTask(abc.ABC):
             return indices[validation_size:]
         
     def map_dataset(self, dataset, add_prefix):
+        # print('dataset size:', len(dataset))
         return dataset.map(functools.partial(self.preprocessor, add_prefix=add_prefix),
                            remove_columns=dataset.column_names)
 
@@ -120,21 +121,81 @@ class AbstractTask(abc.ABC):
         return self.map_dataset(dataset, add_prefix)    
 
 class Squad(AbstractTask):
-    name = "squad"
+    name = 'squad'
     metric = [metrics.squad]
+    metric_names = ['squad']
 
     def load_dataset(self, split):
-        return datasets.load_dataset(self.name, split=split, script_version="master")
+        return datasets.load_dataset(self.name, split=split) # , script_version="master"
 
     def preprocessor(self, example, add_prefix):
         answer = pad_punctuation(example['answers']['text'][0])
         question = pad_punctuation(example['question'])
         context = pad_punctuation(example['context'])
-        source = ["question:", question,
-                  "context:", context]
+        source = [
+            'question:', question,
+            'context:', context
+        ]
         target = [answer]
         return self.seq2seq_format(source, target, add_prefix)
 
+class MNLI(AbstractTask):
+    name = 'mnli'
+    labels_list = ['0', '1', '2']
+    split_to_data_split = {
+        'train': 'train',
+        'validation': 'validation_mismatched',
+        'test': 'validation_matched'
+    }
+    metric = [metrics.accuracy]
+    metric_names = ['accuracy']
+
+    def load_dataset(self, split):
+        return datasets.load_dataset('glue', 'mnli', split=split)
+
+    def preprocessor(self, example, add_prefix=True):
+        src_texts = [
+            'premise:', example['premise'],
+            'hypothesis:', example['hypothesis']
+        ]
+        tgt_texts = [str(example['label'])]
+        return self.seq2seq_format(src_texts, tgt_texts, add_prefix)
+
+class RACE(AbstractTask):
+    name = 'race'
+    labels_list = ['A', 'B', 'C', 'D']
+    metric = [metrics.accuracy]
+    metric_names = ['accuracy']
+
+    def load_dataset(self, split):
+        return datasets.load_dataset('race', 'all', split=split)
+
+    def preprocessor(self, example, add_prefix=True):
+        src_texts = [
+            'article:', example['article'],
+            'question:', example['question'],
+            'options:',
+            'A', example['options'][0],
+            'B', example['options'][1],
+            'C', example['options'][2],
+            'D', example['options'][3],
+        ]
+        tgt_texts = [example['answer']]
+        return self.seq2seq_format(src_texts, tgt_texts, add_prefix)
+
+class Yelp(AbstractTask):
+    name = 'yelp'
+    labels_list = ['0', '1']
+    metric = [metrics.f1_score_with_invalid, metrics.accuracy]
+    metric_names = ['f1', 'accuracy']
+
+    def load_dataset(self, split):
+        return datasets.load_dataset('yelp_polarity', split=split)
+
+    def preprocessor(self, example, add_prefix=True):
+        src_texts = ['review:', example['text']]
+        tgt_texts = [str(example['label'])]
+        return self.seq2seq_format(src_texts, tgt_texts, add_prefix)
 
 class MRPC(AbstractTask):
     name = "mrpc"
@@ -229,26 +290,6 @@ class QQP(AbstractTask):
     def preprocessor(self, example, add_prefix=True):
         src_texts = ["question1:", example['question1'],
                      "question2:", example["question2"]]
-        tgt_texts = [str(example['label'])]
-        return self.seq2seq_format(src_texts, tgt_texts, add_prefix)
-
-
-class MNLI(AbstractTask):
-    name = "mnli"
-    labels_list = ["0", "1", "2"]
-    split_to_data_split = {"train": "train",
-                           "validation": "validation_mismatched",
-                           "test": "validation_matched"}
-    metric = [metrics.accuracy]
-    metric_names = ["accuracy"]
-
-
-    def load_dataset(self, split):
-        return datasets.load_dataset('glue', 'mnli', split=split)
-
-    def preprocessor(self, example, add_prefix=True):
-        src_texts = ["premise:", example['premise'],
-                     "hypothesis", example["hypothesis"]]
         tgt_texts = [str(example['label'])]
         return self.seq2seq_format(src_texts, tgt_texts, add_prefix)
 
@@ -553,13 +594,15 @@ class SuperGLUERecord(AbstractTask):
 TASK_MAPPING = OrderedDict(
     [
         ('squad', Squad),
+        ('mnli', MNLI),
+        ('race', RACE),
+        ('yelp', Yelp),
         ('mrpc', MRPC),
         ('cola', COLA),
         ('sst2', SST2),
         ('qnli', QNLI),
         ('rte', RTE),
         ('wnli', WNLI),
-        ('mnli', MNLI),
         ('qqp', QQP),
         ('stsb', STSB),
         ('superglue-boolq', SuperGLUEBoolQ),

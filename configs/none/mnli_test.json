@@ -1,0 +1,36 @@
+{
+    "dataset_config_name": [
+        "en"
+    ],
+    "delta_type": "none",
+    "do_eval": true,
+    "do_test": true,
+    "do_train": true,
+    "eval_dataset_config_name": [
+        "en"
+    ],
+    "eval_dataset_name": "mnli",
+    "eval_steps": 50,
+    "evaluation_strategy": "steps",
+    "greater_is_better": true,
+    "max_source_length": 128,
+    "metric_for_best_model": "average_metrics",
+    "model_name_or_path": "google/t5-base-lm-adapt",
+    "max_steps": 100,
+    "output_dir": "outputs/none/t5-base/mnli",
+    "overwrite_output_dir": true,
+    "predict_with_generate": true,
+    "push_to_hub": false,
+    "seed": 42,
+    "split_validation_test": true,
+    "task_name": "mnli",
+    "test_dataset_config_name": [
+        "en"
+    ],
+    "test_dataset_name": "mnli",
+    "tokenizer_name": "google/t5-base-lm-adapt",
+    "logging_steps": 1000,
+    "save_strategy": "steps",
+    "save_total_limit": 1,
+    "load_best_model_at_end": true
+}

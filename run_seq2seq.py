@@ -17,8 +17,8 @@ Adopted from: https://github.com/thunlp/OpenDelta/tree/main/examples/examples_se
 '''
 
 import os
-os.environ['MKL_THREADING_LAYER'] = 'GNU' 
-os.environ['MKL_SERVICE_FORCE_INTEL'] = '1'
+# os.environ['MKL_THREADING_LAYER'] = 'GNU' 
+# os.environ['MKL_SERVICE_FORCE_INTEL'] = '1'
 
 import sys
 import json
@@ -41,6 +41,10 @@ from datasets import load_dataset, load_metric, concatenate_datasets
 from transformers.trainer_utils import is_main_process, get_last_checkpoint
 from transformers.trainer_callback import TrainerCallback
 
+import random
+from ray import tune
+from ray.tune.suggest.basic_variant import BasicVariantGenerator
+
 from utils.data_processors import AutoTask, TaskDataCollatorForSeq2Seq, AutoPostProcessor
 from utils.seq2seq_trainer import Seq2SeqTrainer
 from utils.trainers.model_args import ModelArguments
@@ -48,7 +52,12 @@ from utils.trainers.trainer_args import TrainingArguments, DataTrainingArguments
 from utils.trainers.trainer_utils import save_training_config
 
 logger = logging.getLogger(__name__)
-TASK_TO_METRICS = {'mnli': ['accuracy']}
+TASK_TO_METRICS = {
+    'squad': ['em', 'f1'],
+    'mnli': ['accuracy'],
+    'race': ['accuracy'],
+    'yelp': ['f1', 'accuracy']
+}
 
 def run_command(command):
     output = subprocess.getoutput(command)
@@ -80,32 +89,32 @@ class RemainArgHfArgumentParser(HfArgumentParser):
         else:
             return (*outputs,)
 
-class MyCallback(TrainerCallback):
-    def __init__(self, *args, **kwargs):
-        self.delta_args = kwargs.pop('delta_args')
-        self.trainer_args = kwargs.pop('trainer_args')
-        self.model_args = kwargs.pop('model_args')
-        super(MyCallback, self).__init__(*args, **kwargs)
+# class MyCallback(TrainerCallback):
+#     def __init__(self, *args, **kwargs):
+#         self.delta_args = kwargs.pop('delta_args')
+#         self.trainer_args = kwargs.pop('trainer_args')
+#         self.model_args = kwargs.pop('model_args')
+#         super(MyCallback, self).__init__(*args, **kwargs)
         
-    maxcudamem = 0
-    def on_step_end(self, args, state, control, **kwargs ):
-        glb_step = state.global_step
-        cudamem = 0
-        realcudamem =0
-        for device_id in range(torch.cuda.device_count()):
-            cudamem += torch.cuda.memory_allocated(f'cuda:{device_id}')/1024**3
-            realcudamem += torch.cuda.max_memory_allocated(f'cuda:{device_id}')/1024**3
-            torch.cuda.reset_peak_memory_stats(f'cuda:{device_id}')
-        self.maxcudamem = max(self.maxcudamem, realcudamem)
-        self.cudamem = cudamem
-        # self.tb_writer.add_scalar('Static Memory (GB)', cudamem, glb_step)
-        # self.tb_writer.add_scalar('Runtime Memory (GB)', realcudamem, glb_step)
-        # self.tb_writer.add_scalar('Peak Memory (GB)', self.maxcudamem, glb_step)
-        if glb_step > 50:
-            content = f'{self.delta_args.delta_type}\t{self.trainer_args.per_device_train_batch_size}\t{self.model_args.model_name_or_path}\t{self.cudamem}\t{self.maxcudamem}\n'
-            with open('memory_data.txt', 'a') as fout:
-                fout.write(content)
-            exit()
+#     maxcudamem = 0
+#     def on_step_end(self, args, state, control, **kwargs ):
+#         glb_step = state.global_step
+#         cudamem = 0
+#         realcudamem =0
+#         for device_id in range(torch.cuda.device_count()):
+#             cudamem += torch.cuda.memory_allocated(f'cuda:{device_id}')/1024**3
+#             realcudamem += torch.cuda.max_memory_allocated(f'cuda:{device_id}')/1024**3
+#             torch.cuda.reset_peak_memory_stats(f'cuda:{device_id}')
+#         self.maxcudamem = max(self.maxcudamem, realcudamem)
+#         self.cudamem = cudamem
+#         # self.tb_writer.add_scalar('Static Memory (GB)', cudamem, glb_step)
+#         # self.tb_writer.add_scalar('Runtime Memory (GB)', realcudamem, glb_step)
+#         # self.tb_writer.add_scalar('Peak Memory (GB)', self.maxcudamem, glb_step)
+#         if glb_step > 50:
+#             content = f'{self.delta_args.delta_type}\t{self.trainer_args.per_device_train_batch_size}\t{self.model_args.model_name_or_path}\t{self.cudamem}\t{self.maxcudamem}\n'
+#             with open('memory_data.txt', 'a') as fout:
+#                 fout.write(content)
+#             exit()
 
 def main():
 
@@ -121,24 +130,24 @@ def main():
     else:
         model_args, data_args, training_args, delta_args = parser.parse_args_into_dataclasses()
 
-    # Detecting last checkpoint.
-    last_checkpoint = None
-    if os.path.isdir(training_args.output_dir) and training_args.do_train and not training_args.overwrite_output_dir:
-        last_checkpoint = get_last_checkpoint(training_args.output_dir)
-        print('#### last_checkpoint ', last_checkpoint)
-        if last_checkpoint is None and len(os.listdir(training_args.output_dir)) > 0:
-            '''
-            raise ValueError(
-                f'Output directory ({training_args.output_dir}) already exists and is not empty. '
-                'Use --overwrite_output_dir to overcome.'
-            )
-            '''
-            pass 
-        elif last_checkpoint is not None:
-            logger.info(
-                f'Checkpoint detected, resuming training at {last_checkpoint}. To avoid this behavior, change '
-                'the `--output_dir` or add `--overwrite_output_dir` to train from scratch.'
-            )
+    # # Detecting last checkpoint.
+    # last_checkpoint = None
+    # if os.path.isdir(training_args.output_dir) and training_args.do_train and not training_args.overwrite_output_dir:
+    #     last_checkpoint = get_last_checkpoint(training_args.output_dir)
+    #     print('#### last_checkpoint ', last_checkpoint)
+    #     if last_checkpoint is None and len(os.listdir(training_args.output_dir)) > 0:
+    #         '''
+    #         raise ValueError(
+    #             f'Output directory ({training_args.output_dir}) already exists and is not empty. '
+    #             'Use --overwrite_output_dir to overcome.'
+    #         )
+    #         '''
+    #         pass 
+    #     elif last_checkpoint is not None:
+    #         logger.info(
+    #             f'Checkpoint detected, resuming training at {last_checkpoint}. To avoid this behavior, change '
+    #             'the `--output_dir` or add `--overwrite_output_dir` to train from scratch.'
+    #         )
 
     # Setup logging
     logging.basicConfig(
@@ -195,27 +204,51 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
-    model = AutoModelForSeq2SeqLM.from_pretrained(
-        model_args.model_name_or_path,
-        from_tf=bool('.ckpt' in model_args.model_name_or_path),
-        config=config,
-        cache_dir=model_args.cache_dir,
-        revision=model_args.model_revision,
-        use_auth_token=True if model_args.use_auth_token else None,
-    )
-    model.resize_token_embeddings(len(tokenizer))
 
-    if delta_args.delta_type.lower() != 'none':
-        from opendelta import AutoDeltaConfig, AutoDeltaModel
-        delta_config = AutoDeltaConfig.from_dict(vars(delta_args))
-        delta_model = AutoDeltaModel.from_config(delta_config, backbone_model=model)
-        delta_model.freeze_module(set_state_dict = True)
-        delta_model.log(delta_ratio=True, trainable_ratio=True, visualization=True)
+    def my_model_init(config, model_args, delta_args, tokenizer_size):
+        my_model = AutoModelForSeq2SeqLM.from_pretrained(
+            model_args.model_name_or_path,
+            from_tf=False,
+            config=config,
+            cache_dir=model_args.cache_dir,
+            revision=model_args.model_revision,
+            use_auth_token=False
+        )
+        # my_model.resize_token_embeddings(tokenizer_size)
+        if delta_args.delta_type.lower() != 'none':
+            from opendelta import AutoDeltaConfig, AutoDeltaModel
+            delta_config = AutoDeltaConfig.from_dict(vars(delta_args))
+            delta_model = AutoDeltaModel.from_config(delta_config, backbone_model=my_model)
+            delta_model.freeze_module(set_state_dict=True)
+            delta_model.log(delta_ratio=True, trainable_ratio=True, visualization=True)
+        # print(my_model)
+        return my_model
+    # print('delta args:', delta_args)
+
+    model_init = functools.partial(
+        my_model_init,
+        config=config,
+        model_args=model_args,
+        delta_args=delta_args,
+        tokenizer_size=len(tokenizer)
+    )
+    # print(model_init)
+
+    # model = AutoModelForSeq2SeqLM.from_pretrained(
+    #     model_args.model_name_or_path,
+    #     from_tf=False,
+    #     config=config,
+    #     cache_dir=model_args.cache_dir,
+    #     revision=model_args.model_revision,
+    #     use_auth_token=False
+    # )
+    # # model.resize_token_embeddings(len(tokenizer))
+    # print(model)
 
     # model parallelize
-    # if hasattr(training_args, 'model_parallel') and training_args.model_parallel:
-    #     logger.info('parallelize model!')
-    model.parallelize()
+    # # if hasattr(training_args, 'model_parallel') and training_args.model_parallel:
+    # #     logger.info('parallelize model!')
+    # model.parallelize()
 
     data_args.dataset_name = [data_args.task_name]
     data_args.eval_dataset_name = [data_args.eval_dataset_name]
@@ -287,7 +320,8 @@ def main():
             split='validation', 
             split_validation_test=training_args.split_validation_test,
             add_prefix=True,
-            n_obs=data_args.max_val_samples)
+            n_obs=100)
+            # n_obs=data_args.max_val_samples)
             for eval_dataset, eval_dataset_config in zip(data_args.eval_dataset_name, data_args.eval_dataset_config_name)}
         
         max_target_lengths = [AutoTask.get(dataset_name, dataset_config_name).get_max_target_length( \
@@ -357,15 +391,16 @@ def main():
             result.update(metric(decoded_preds, decoded_labels))
         return result
 
-
+    print('[Metrics]:', TASK_TO_METRICS[data_args.dataset_name[0]])
     # Initialize Seq2Seq Trainer
     trainer = Seq2SeqTrainer(
-        model=model,
+        # model=model,
+        model_init=model_init,
         args=training_args,
         delta_args=delta_args,
         train_dataset=train_dataset if training_args.do_train else None,
         eval_dataset=list(eval_datasets.values())[0] if training_args.do_eval else None,
-        data_info = data_info,
+        data_info=data_info,
         tokenizer=tokenizer,
         data_collator=data_collator,
         compute_metrics=compute_metrics if training_args.predict_with_generate else None,
@@ -382,28 +417,55 @@ def main():
        os.makedirs(training_args.output_dir, exist_ok=True)
        save_training_config(sys.argv[1], training_args.output_dir)
 
+    def my_hp_space(trial):
+        bs = random.choice([16, 32])
+        return {
+            'learning_rate': tune.uniform(1e-5, 1e-3),
+            'per_device_train_batch_size': bs,
+            'per_device_eval_batch_size': bs
+        }
+
     # Training
     if training_args.do_train:
         checkpoint = None
         if training_args.resume_from_checkpoint is not None:
             checkpoint = training_args.resume_from_checkpoint
-        elif last_checkpoint is not None:
-            checkpoint = last_checkpoint
+        # elif last_checkpoint is not None:
+        #     checkpoint = last_checkpoint
 
         if training_args.compute_time:
             torch.cuda.synchronize()  # wait for move to complete
             start = torch.cuda.Event(enable_timing=True)
             end = torch.cuda.Event(enable_timing=True)
             start.record()
-        
+
+        best_run = trainer.hyperparameter_search(
+            # hps kwargs
+            resume=checkpoint,
+            # checkpoint_score_attr='max-eval_average_metrics',
+            # keep_checkpoint_num=1,
+            hp_space=my_hp_space,
+            compute_objective=lambda d: d['eval_average_metrics'],
+            n_trials=3,
+            direction='maximize',
+            backend='ray',
+            # search algorithm
+            search_alg=BasicVariantGenerator(),
+            mode='max'
+        )
+        print('[Best Run]:', best_run)
+
+        for n, v in best_run.hyperparameters.items():
+            setattr(trainer.args, n, v)
         train_result = trainer.train(resume_from_checkpoint=checkpoint)
-        
+        print(train_result)
+
         if training_args.compute_time:
             end.record()
             torch.cuda.synchronize()  # wait for all_reduce to complete
             total_time = start.elapsed_time(end)/(1000*60)
             performance_metrics.update({'total_time in minutes ': total_time})
-        
+
         trainer.save_model()  # Saves the tokenizer too for easy upload
         train_metrics = train_result.metrics
         max_train_samples = (
