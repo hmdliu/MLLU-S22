@@ -13,7 +13,7 @@ BASE_CONFIG = Dict({
     'seed': 42,
     'do_train': True,
     'do_eval': True,
-    'do_test': True,
+    'do_test': False,
     'split_validation_test': True,
     'dataset_config_name': ['en'],
     'eval_dataset_config_name': ['en'],
@@ -23,10 +23,10 @@ BASE_CONFIG = Dict({
     'predict_with_generate': True,
     'greater_is_better': True,
     'load_best_model_at_end': True,
-    'max_steps': 20000,
-    'eval_steps': 500,
+    'eval_steps': 2000,
+    'save_steps': 2000,
     'warmup_steps': 0,
-    'logging_steps': 50,
+    'logging_steps': 100,
     'evaluation_strategy': 'steps',
     'model_name_or_path': 'google/t5-base-lm-adapt',
     'tokenizer_name': 'google/t5-base-lm-adapt',
@@ -45,7 +45,7 @@ TRAIN_SIZE = {
     'yelp': 559000
 }
 
-def get_config(dataset: str, delta_type: str, data_ratio: float) -> Dict:
+def get_search_config(dataset: str, delta_type: str, data_ratio: float) -> Dict:
 
     assert dataset in ('squad', 'race', 'mnli', 'yelp')
     assert delta_type in ('none', 'adapter', 'bitfit', 'lora', 'prefix')
@@ -72,6 +72,9 @@ def get_config(dataset: str, delta_type: str, data_ratio: float) -> Dict:
         config.max_val_samples = 160
 
     return config
+
+def get_eval_config(dataset: str, delta_type: str, data_ratio: float) -> Dict:
+    raise NotImplementedError
 
 def update_dataset_config(config):
     if config.task_name in ('squad', 'race'):

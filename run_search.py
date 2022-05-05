@@ -17,6 +17,7 @@ import transformers
 from transformers import (
     AutoConfig,
     AutoTokenizer,
+    EarlyStoppingCallback,
     default_data_collator,
     set_seed,
 )
@@ -25,7 +26,7 @@ from transformers.trainer_utils import is_main_process
 # from transformers.trainer_callback import TrainerCallback
 from ray.tune.suggest.basic_variant import BasicVariantGenerator
 
-from utils.config import ConfigParser, get_config, save_delta_config
+from utils.config import ConfigParser, get_search_config, save_delta_config
 from utils.model_utils import model_init_func, hp_space
 from utils.seq2seq_trainer import Seq2SeqTrainer
 from utils.data_processors import AutoTask, TaskDataCollatorForSeq2Seq, AutoPostProcessor
@@ -37,7 +38,7 @@ TASK_TO_METRICS = {
     'squad': ['em', 'f1'],
     'mnli': ['accuracy'],
     'race': ['accuracy'],
-    'yelp': ['f1', 'accuracy']
+    'yelp': ['accuracy']
 }
 
 def main():
@@ -46,7 +47,7 @@ def main():
 
     # init parser & arguments
     parser = ConfigParser((ModelArguments, DataTrainingArguments, TrainingArguments))
-    addict_config = get_config(dataset=sys.argv[1], delta_type=sys.argv[2], data_ratio=float(sys.argv[3]))
+    addict_config = get_search_config(dataset=sys.argv[1], delta_type=sys.argv[2], data_ratio=float(sys.argv[3]))
     model_args, data_args, training_args, delta_args = parser.parse_addict(addict_config)
     # print(model_args, data_args, training_args, delta_args)
 
@@ -242,105 +243,47 @@ def main():
         tokenizer=tokenizer,
         data_collator=data_collator,
         compute_metrics=compute_metrics if training_args.predict_with_generate else None,
-        evaluation_metrics = TASK_TO_METRICS[data_args.dataset_name[0]],
+        evaluation_metrics=TASK_TO_METRICS[data_args.dataset_name[0]],
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=3)]
     )
 
     # save exp config
     if trainer.is_world_process_zero():
        save_delta_config(addict_config, training_args.output_dir)
 
-    # training
-    if training_args.do_train:
+    # init checkpoint if needed
+    checkpoint = None
+    if training_args.resume_from_checkpoint is not None:
+        checkpoint = training_args.resume_from_checkpoint
 
-        # init checkpoint if needed
-        checkpoint = None
-        if training_args.resume_from_checkpoint is not None:
-            checkpoint = training_args.resume_from_checkpoint
+    if training_args.compute_time:
+        torch.cuda.synchronize()
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+        start.record()
 
-        if training_args.compute_time:
-            torch.cuda.synchronize()
-            start = torch.cuda.Event(enable_timing=True)
-            end = torch.cuda.Event(enable_timing=True)
-            start.record()
+    best_run = trainer.hyperparameter_search(
+        # hps kwargs
+        resume=checkpoint,
+        hp_space=hp_space,
+        compute_objective=lambda d: d['eval_average_metrics'],
+        n_trials=5,
+        direction='maximize',
+        backend='ray',
+        # search algorithm
+        search_alg=BasicVariantGenerator(),
+        mode='max',
+        log_to_file=True,
+        local_dir=training_args.output_dir,
+        name='hps_log'
+    )
+    print('[Best Run]:', best_run)
 
-        best_run = trainer.hyperparameter_search(
-            # hps kwargs
-            resume=checkpoint,
-            hp_space=hp_space,
-            compute_objective=lambda d: d['eval_average_metrics'],
-            n_trials=3,
-            direction='maximize',
-            backend='ray',
-            # search algorithm
-            search_alg=BasicVariantGenerator(),
-            mode='max',
-            log_to_file=True,
-            local_dir=training_args.output_dir,
-            name='hps_log'
-        )
-        print('[Best Run]:', best_run)
-
-        # load hyperparameters from the best run 
-        for n, v in best_run.hyperparameters.items():
-            setattr(trainer.args, n, v)
-        train_result = trainer.train(resume_from_checkpoint=checkpoint)
-        print('[Train Result]:', train_result)
-
-        if training_args.compute_time:
-            end.record()
-            torch.cuda.synchronize()  # wait for all_reduce to complete
-            total_time = start.elapsed_time(end) / (1000*60)
-            performance_metrics.update({'total_time in minutes': total_time})
-
-        # save model & metrics
-        trainer.save_model()
-        train_metrics = train_result.metrics
-        max_train_samples = (data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset))
-        train_metrics['train_samples'] = min(max_train_samples, len(train_dataset))
-        trainer.log_metrics('train', train_metrics)
-        trainer.save_metrics('train', train_metrics)
-        trainer.save_state()
-
-    if torch.cuda.is_available() and training_args.compute_memory:
-        peak_memory = (torch.cuda.max_memory_allocated() / 1024 ** 2) / 1000
-        print('Memory utilization', peak_memory, 'GB')
-        performance_metrics.update({'peak_memory': peak_memory})
-    if training_args.compute_memory or training_args.compute_time:
-        print(performance_metrics)
-        trainer.save_metrics('performance', performance_metrics)
-    
-    # evaluation
-    results = {}
-    if training_args.do_eval:
-        logger.info('*** Evaluate ***')
-        for task, eval_dataset in eval_datasets.items():
-            metrics = trainer.evaluate(
-                eval_dataset=eval_dataset,
-                max_length=data_args.val_max_target_length,
-                num_beams=data_args.num_beams,
-            )
-            trainer.log_metrics('eval', metrics)
-            trainer.save_metrics('eval', metrics)
-        results['evaluate'] = metrics
-
-    # test
-    if training_args.do_test:
-        logger.info('*** Test ***')
-        for task, test_dataset in test_datasets.items():
-            metrics = trainer.evaluate(
-                eval_dataset=test_dataset,
-                max_length=data_args.test_max_target_length, num_beams=data_args.num_beams,
-                metric_key_prefix='test'
-            )
-            trainer.log_metrics('test', metrics)
-            trainer.save_metrics('test', metrics)
-        results['test'] = metrics
-
-    # dump results
-    with open(f'{os.path.dirname(training_args.output_dir)}/results.jsonl', 'a') as f:
-        string = json.dumps(results, indent=4, sort_keys=True)
-        f.write(f'{training_args.output_dir}\n{string}\n\n')
-    print(results)
+    if training_args.compute_time:
+        end.record()
+        torch.cuda.synchronize()  # wait for all_reduce to complete
+        total_time = start.elapsed_time(end) / (1000*60)
+        performance_metrics.update({'total_time in minutes': total_time})
 
 if __name__ == '__main__':
     main()

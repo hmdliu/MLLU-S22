@@ -27,5 +27,5 @@ singularity exec --nv --bind /scratch/$USER \
 /bin/bash -c "
 source /ext3/env.sh
 cd /scratch/$USER/MLLU-S22
-python run_seq2seq.py ${dataset} ${delta_type} ${data_ratio} > ${log_path} 2>&1
+python run_search.py ${dataset} ${delta_type} ${data_ratio} > ${log_path} 2>&1
 "

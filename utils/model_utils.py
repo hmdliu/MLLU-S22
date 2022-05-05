@@ -25,8 +25,11 @@ def model_init_func(config, model_args, delta_args, tokenizer_size=None):
 
 def hp_space(trial):
     bs = random.choice([16, 32])
+    # lr = random.choice([1e-3, 5e-4, 1e-4])
+    max_steps = random.choice([10000, 20000, 40000])
     return {
-        'learning_rate': tune.uniform(1e-5, 1e-3),
+        'learning_rate': tune.loguniform(1e-5, 1e-3),
         'per_device_train_batch_size': bs,
-        'per_device_eval_batch_size': bs
+        'per_device_eval_batch_size': bs,
+        'max_steps': max_steps
     }

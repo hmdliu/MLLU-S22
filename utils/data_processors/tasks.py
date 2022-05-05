@@ -1,16 +1,15 @@
-from collections import OrderedDict
-import collections 
+
 import abc
-import functools
-from typing import Callable, List, Mapping
-from utils.trainers.trainer_utils import pad_punctuation
-from utils.metrics import metrics
-from .utils import round_stsb_target
-import datasets
-import logging
-import numpy as np
 import torch
-import re
+import logging
+import datasets
+import functools
+
+from collections import OrderedDict
+from typing import Callable, List, Mapping
+
+from utils.metrics import metrics
+from utils.trainers.trainer_utils import pad_punctuation
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +109,7 @@ class AbstractTask(abc.ABC):
         elif split_validation_test and self.name in self.large_data_without_all_splits \
                 and split != "test":
             dataset = self.load_dataset(split="train")
-            indices = self.get_split_indices(split, dataset, validation_size=1000)
+            indices = self.get_split_indices(split, dataset, validation_size=38000)
             dataset = self.subsample(dataset, n_obs, indices)
         else:
             mapped_split = self.split_to_data_split[split]
@@ -187,7 +186,7 @@ class Yelp(AbstractTask):
     name = 'yelp'
     labels_list = ['0', '1']
     metric = [metrics.f1_score_with_invalid, metrics.accuracy]
-    metric_names = ['f1', 'accuracy']
+    metric_names = ['accuracy']
 
     def load_dataset(self, split):
         return datasets.load_dataset('yelp_polarity', split=split)
