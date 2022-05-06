@@ -27,8 +27,6 @@ class AbstractTask(abc.ABC):
         'validation': 'validation', 
         'test': 'test'
     }
-    small_datasets_without_all_splits = []
-    large_data_without_all_splits = ['yelp']
 
     def __init__(self, config, seed=42):
         self.config = config
@@ -95,20 +93,8 @@ class AbstractTask(abc.ABC):
                            remove_columns=dataset.column_names)
 
     def get(self, split, add_prefix=True, n_obs=None, split_validation_test=False):
-        # For small datasets (n_samples < 10K) without test set, we divide validation set to
-        # half, use one half as test set and one half as validation set.
-        if split_validation_test and self.name in self.small_datasets_without_all_splits \
-                and split != "train":
-            mapped_split = self.split_to_data_split["validation"]
-            dataset = self.load_dataset(split=mapped_split)
-            indices = self.get_split_indices(split, dataset, validation_size=len(dataset)//2)
-            dataset = self.subsample(dataset, n_obs, indices)
-        # For larger datasets (n_samples > 10K), we divide training set into 1K as
-        # validation and the rest as training set, keeping the original validation
-        # set as the test set.
-        elif split_validation_test and self.name in self.large_data_without_all_splits \
-                and split != "test":
-            dataset = self.load_dataset(split="train")
+        if self.name == 'yelp' and split != 'test':
+            dataset = self.load_dataset(split='train')
             indices = self.get_split_indices(split, dataset, validation_size=38000)
             dataset = self.subsample(dataset, n_obs, indices)
         else:
@@ -125,7 +111,7 @@ class Squad(AbstractTask):
     metric_names = ['squad']
 
     def load_dataset(self, split):
-        return datasets.load_dataset(self.name, split=split) # , script_version="master"
+        return datasets.load_dataset(self.name, split=split)
 
     def preprocessor(self, example, add_prefix):
         answer = pad_punctuation(example['answers']['text'][0])
@@ -150,7 +136,12 @@ class MNLI(AbstractTask):
     metric_names = ['accuracy']
 
     def load_dataset(self, split):
-        return datasets.load_dataset('glue', 'mnli', split=split)
+        if split == 'train':
+            return datasets.load_dataset('glue', 'mnli', split='train')
+        print('Concatenating MNLI-matched and MNLI-mismatched ...')
+        matched = datasets.load_dataset('glue', 'mnli', split='validation_matched')
+        mismatched = datasets.load_dataset('glue', 'mnli', split='validation_mismatched')
+        return datasets.concatenate_datasets([matched, mismatched])
 
     def preprocessor(self, example, add_prefix=True):
         src_texts = [
@@ -171,13 +162,13 @@ class RACE(AbstractTask):
 
     def preprocessor(self, example, add_prefix=True):
         src_texts = [
-            'article:', example['article'],
             'question:', example['question'],
             'options:',
             'A', example['options'][0],
             'B', example['options'][1],
             'C', example['options'][2],
             'D', example['options'][3],
+            'article:', example['article'],
         ]
         tgt_texts = [example['answer']]
         return self.seq2seq_format(src_texts, tgt_texts, add_prefix)

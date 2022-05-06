@@ -23,7 +23,6 @@ from transformers import (
 )
 from datasets import concatenate_datasets
 from transformers.trainer_utils import is_main_process
-# from transformers.trainer_callback import TrainerCallback
 from ray.tune.suggest.basic_variant import BasicVariantGenerator
 
 from utils.config import ConfigParser, get_search_config, save_delta_config
@@ -179,32 +178,6 @@ def main():
                 load_from_cache_file=not data_args.overwrite_cache,
             )
 
-    if training_args.do_test:
-        test_datasets = {
-            test_dataset: AutoTask.get(test_dataset, test_dataset_config, seed=data_args.data_seed).get(
-                split='test', 
-                split_validation_test=training_args.split_validation_test,
-                add_prefix=True,
-                n_obs=data_args.max_test_samples
-            )
-            for test_dataset, test_dataset_config in zip(data_args.test_dataset_name, data_args.test_dataset_config_name)
-        }
-        max_target_lengths = [
-            AutoTask.get(dataset_name, dataset_config_name).get_max_target_length(
-                tokenizer=tokenizer,
-                default_max_length=data_args.max_target_length
-            )
-            for dataset_name, dataset_config_name in zip(data_args.test_dataset_name, data_args.test_dataset_config_name)
-        ]
-        for k, name in enumerate(test_datasets):
-            test_datasets[name] = test_datasets[name].map(
-                functools.partial(preprocess_function, max_target_length=max_target_lengths[k]),
-                batched=True,
-                num_proc=data_args.preprocessing_num_workers,
-                remove_columns=column_names,
-                load_from_cache_file=not data_args.overwrite_cache,
-            )
-
     # data collator
     label_pad_token_id = -100 if data_args.ignore_pad_token_for_loss else tokenizer.pad_token_id
     if data_args.pad_to_max_length:
@@ -266,8 +239,9 @@ def main():
         # hps kwargs
         resume=checkpoint,
         hp_space=hp_space,
+        resources_per_trial={'gpu': 1, 'cpu': 4},
         compute_objective=lambda d: d['eval_average_metrics'],
-        n_trials=5,
+        n_trials=8,
         direction='maximize',
         backend='ray',
         # search algorithm
