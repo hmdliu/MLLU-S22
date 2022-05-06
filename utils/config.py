@@ -78,7 +78,9 @@ def get_eval_config(dataset: str, delta_type: str, data_ratio: float) -> Dict:
     raise NotImplementedError
 
 def update_dataset_config(config):
-    if config.task_name in ('squad', 'race'):
+    if config.task_name == 'squad':
+        config.max_source_length = 384
+    if config.task_name == 'race':
         config.max_source_length = 512
     return config
 

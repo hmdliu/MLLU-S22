@@ -26,7 +26,7 @@ from transformers.trainer_utils import is_main_process
 from ray.tune.suggest.basic_variant import BasicVariantGenerator
 
 from utils.config import ConfigParser, get_search_config, save_delta_config
-from utils.model_utils import model_init_func, hp_space_lbs, hp_space_sbs
+from utils.model_utils import model_init_func, get_hp_space_func
 from utils.seq2seq_trainer import Seq2SeqTrainer
 from utils.data_processors import AutoTask, TaskDataCollatorForSeq2Seq, AutoPostProcessor
 from utils.trainers.model_args import ModelArguments
@@ -86,6 +86,7 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
+    print(f'\n[max length]: tokenizer={tokenizer.model_max_length}, config={data_args.max_source_length}\n')
 
     # setup model init function
     model_init = functools.partial(
@@ -203,7 +204,7 @@ def main():
         for metric in eval_metrics:
             result.update(metric(decoded_preds, decoded_labels))
         return result
-    print('[Metrics]:', TASK_TO_METRICS[data_args.dataset_name[0]])
+    print(f'\n[metrics]: {TASK_TO_METRICS[data_args.dataset_name[0]]}\n')
 
     # init Seq2Seq Trainer
     trainer = Seq2SeqTrainer(
@@ -238,10 +239,10 @@ def main():
     best_run = trainer.hyperparameter_search(
         # hps kwargs
         resume=checkpoint,
-        hp_space=(hp_space_lbs if data_args.dataset_name in ('mnli', 'yelp') else hp_space_sbs),
+        hp_space=get_hp_space_func(data_args.dataset_name),
         resources_per_trial={'gpu': 1, 'cpu': 4},
         compute_objective=lambda d: d['eval_average_metrics'],
-        n_trials=8,
+        n_trials=12,
         direction='maximize',
         backend='ray',
         # search algorithm
