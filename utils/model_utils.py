@@ -23,9 +23,18 @@ def model_init_func(config, model_args, delta_args, tokenizer_size=None):
     # print(my_model)
     return model
 
-def hp_space(trial):
+def hp_space_lbs(trial):
     return {
         'max_steps': tune.choice([10000, 20000, 40000]),
         'learning_rate': tune.choice([3e-3, 3e-4, 3e-5]),
-        'per_device_train_batch_size': tune.choice([16, 32])
+        'per_device_train_batch_size': tune.choice([16, 32]),
+        'per_device_eval_batch_size': 32,
+    }
+
+def hp_space_sbs(trial):
+    return {
+        'max_steps': tune.choice([10000, 20000, 40000]),
+        'learning_rate': tune.choice([3e-3, 3e-4, 3e-5]),
+        'per_device_train_batch_size': tune.choice([4, 8]),
+        'per_device_eval_batch_size': 8,
     }

@@ -26,7 +26,7 @@ from transformers.trainer_utils import is_main_process
 from ray.tune.suggest.basic_variant import BasicVariantGenerator
 
 from utils.config import ConfigParser, get_search_config, save_delta_config
-from utils.model_utils import model_init_func, hp_space
+from utils.model_utils import model_init_func, hp_space_lbs, hp_space_sbs
 from utils.seq2seq_trainer import Seq2SeqTrainer
 from utils.data_processors import AutoTask, TaskDataCollatorForSeq2Seq, AutoPostProcessor
 from utils.trainers.model_args import ModelArguments
@@ -238,7 +238,7 @@ def main():
     best_run = trainer.hyperparameter_search(
         # hps kwargs
         resume=checkpoint,
-        hp_space=hp_space,
+        hp_space=(hp_space_lbs if data_args.dataset_name in ('mnli', 'yelp') else hp_space_sbs),
         resources_per_trial={'gpu': 1, 'cpu': 4},
         compute_objective=lambda d: d['eval_average_metrics'],
         n_trials=8,
