@@ -78,11 +78,9 @@ def squad(predictions, targets):
   Returns:
     dict with score_key: squad score across all targets and predictions
   """
-
-  targets = [[normalize_squad(t) for t in u] for u in targets]
+  targets = [[normalize_squad(u)] for u in targets]
   predictions = [normalize_squad(p) for p in predictions]
   return qa_metrics(targets, predictions)
-
 
 def exact_match(predictions, targets):
   """Computes whether the targets match predictions exactly."""

@@ -23,7 +23,6 @@ BASE_CONFIG = Dict({
     'per_device_eval_batch_size': 32,
     'predict_with_generate': True,
     'greater_is_better': True,
-    'load_best_model_at_end': True,
     'eval_steps': 2000,
     'save_steps': 2000,
     'warmup_steps': 0,
@@ -32,6 +31,7 @@ BASE_CONFIG = Dict({
     'model_name_or_path': 'google/t5-base-lm-adapt',
     'tokenizer_name': 'google/t5-base-lm-adapt',
     'overwrite_output_dir': True,
+    'load_best_model_at_end': True,
     'save_strategy': 'steps',
     'save_total_limit': 1,
     'disable_tqdm': True,
@@ -67,7 +67,6 @@ def get_search_config(dataset: str, delta_type: str, data_ratio: float) -> Dict:
     # test run
     if data_ratio == -1:
         config.disable_tqdm = False
-        config.max_steps = 100
         config.eval_steps = 50
         config.max_train_samples = 160
         config.max_val_samples = 160

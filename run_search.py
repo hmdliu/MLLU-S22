@@ -259,6 +259,10 @@ def main():
         torch.cuda.synchronize()  # wait for all_reduce to complete
         total_time = start.elapsed_time(end) / (1000*60)
         performance_metrics.update({'total_time in minutes': total_time})
+    
+    # dump results
+    with open(f'{os.path.dirname(training_args.output_dir)}/best_run_{sys.argv[3]}.json', 'w') as f:
+        f.write(json.dumps(best_run.hyperparameters, indent=4, sort_keys=True))
 
 if __name__ == '__main__':
     main()
