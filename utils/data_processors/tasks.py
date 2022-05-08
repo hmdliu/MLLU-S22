@@ -82,7 +82,7 @@ class AbstractTask(abc.ABC):
 
     def get_split_indices(self, split, dataset, validation_size):
         indices = self.shuffled_indices(dataset)
-        if split == "validation":
+        if split == 'validation':
             return indices[:validation_size]
         else:
             return indices[validation_size:]
@@ -93,7 +93,11 @@ class AbstractTask(abc.ABC):
                            remove_columns=dataset.column_names)
 
     def get(self, split, add_prefix=True, n_obs=None, split_validation_test=False):
-        if self.name == 'yelp' and split != 'test':
+        if self.name == 'squad' and split != 'train':
+            dataset = self.load_dataset(split='validation')
+            indices = self.get_split_indices(split, dataset, validation_size=len(dataset)//2)
+            dataset = self.subsample(dataset, n_obs, indices)
+        elif self.name == 'yelp' and split != 'test':
             dataset = self.load_dataset(split='train')
             indices = self.get_split_indices(split, dataset, validation_size=38000)
             dataset = self.subsample(dataset, n_obs, indices)

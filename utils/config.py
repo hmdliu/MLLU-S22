@@ -20,7 +20,6 @@ BASE_CONFIG = Dict({
     'test_dataset_config_name': ['en'],
     'max_source_length': 128,
     'metric_for_best_model': 'average_metrics',
-    'per_device_eval_batch_size': 32,
     'predict_with_generate': True,
     'greater_is_better': True,
     'eval_steps': 2000,
@@ -43,7 +42,7 @@ TRAIN_SIZE = {
     'squad': 87599,
     'race': 87866,
     'mnli': 392702,
-    'yelp': 559000
+    'yelp': 522000  # 560000 - 38000 (val split)
 }
 
 def get_search_config(dataset: str, delta_type: str, data_ratio: float) -> Dict:

@@ -242,7 +242,7 @@ def main():
         hp_space=get_hp_space_func(data_args.dataset_name),
         resources_per_trial={'gpu': 1, 'cpu': 4},
         compute_objective=lambda d: d['eval_average_metrics'],
-        n_trials=12,
+        n_trials=8,
         direction='maximize',
         backend='ray',
         # search algorithm
