@@ -60,3 +60,18 @@ cat log/[dataset]/[delta_type]/results.jsonl
 - [**bitfit**](https://arxiv.org/abs/2106.10199)
 - [**lora**](https://arxiv.org/abs/2106.09685)
 - [**prefix**](https://arxiv.org/abs/2101.00190)
+
+---
+
+## Dump Results
+```
+# switch to project root dir & create a dir for configs
+cd /scratch/$USER/MLLU-S22 && mkdir -p configs
+
+# Usage: python dump_results.py [search_dir] [output_dir]
+python dump_results.py ./outputs ./configs
+
+# check best configs
+ls ./configs
+```
+

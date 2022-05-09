@@ -1,0 +1,36 @@
+
+# edit bashrc file
+alias rc='vim ~/.bashrc'
+
+# slurm job list
+alias sq='squeue -u $USER'
+alias wt='watch -n 1 squeue -u $USER'
+
+# switch to scratch dir
+alias sc='cd /scratch/$USER'
+
+# activate singularity
+alias se='source /ext3/env.sh'
+alias sing='singularity exec --nv --bind /scratch --overlay /scratch/hl3797/overlay-25GB-500K.ext3:ro /scratch/hl3797/cuda11.4.2-cudnn8.2.4-devel-ubuntu20.04.3.sif /bin/bash'
+
+# show job info
+alias sj='scontrol show job -d'
+
+# quota usage
+alias cu='sshare --format=user,account,GrpTRESRaw%120 --user=$USER'
+alias tu='sacctmgr list assoc format=user,qos,defaultqos,account%20,GrpTRESMins%30 where user=$USER'
+
+# list disk usage
+alias lsdu='du -d 1 . -h'
+
+# utils for log & chackpoints
+# Note: use these ones under ./outputs
+alias lsjs='ls ./*/*/*.json'
+alias lslg='ls ./*/*/*.log | grep'
+alias lscp='ls ./*/*/*/*/*/pytorch_model.bin'
+alias rmcp='rm ./*/*/*/*/*/pytorch_model.bin && rm ./*/*/*/*/*/optimizer.pt'
+
+# send file from GCP to Greene
+send() {
+    scp $1 greene-dtn:/scratch/$USER
+}
