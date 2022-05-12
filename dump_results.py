@@ -24,7 +24,7 @@ def dump_exp(search_dir, output_dir, dataset, delta_type, data_ratio):
         return
 
     # grep results
-    results, paths = [], []
+    results, metrics, paths = [], [], []
     for i in range(len(trials)):
         res = os.path.join(curr_dir, trials[i], 'stdout')
         try:
@@ -32,6 +32,7 @@ def dump_exp(search_dir, output_dir, dataset, delta_type, data_ratio):
                 lines = f.read().split('\n')
             filtered_lines = [l for l in lines if l.startswith("{'eval_loss':")]
             results.append(eval(max(filtered_lines, key=lambda l: eval(l)['eval_average_metrics'])))
+            metrics.append('\n'.join(filtered_lines))
             paths.append(res)
         except:
             print(f'Skip trial {i}')
@@ -52,10 +53,16 @@ def dump_exp(search_dir, output_dir, dataset, delta_type, data_ratio):
     }
     best_config['per_device_eval_batch_size'] = 8 if best_config['per_device_train_batch_size'] in (4, 8) else 32
     print('[Best Config]:', best_config)
-    dump_dir = os.path.join(output_dir, f'{dataset}_{delta_type}_{data_ratio}.json')
-    print('[Dump Dir]:', dump_dir)
-    with open(dump_dir, 'w') as f:
+    config_path = os.path.join(output_dir, f'{dataset}_{delta_type}_{data_ratio}.json')
+    print('[Config Path]:', config_path)
+    with open(config_path, 'w') as f:
         f.write(json.dumps(best_config, indent=4, sort_keys=True))
+
+    # dump convergence log
+    log_path = os.path.join(output_dir, f'{dataset}_{delta_type}_{data_ratio}.log')
+    print('[Log Path]:', log_path)
+    with open(log_path, 'w') as f:
+        f.write(metrics[results.index(best_results)])
 
 if __name__ == '__main__':
     assert len(sys.argv) == 3, 'Usage: python dump_results.py [search_dir] [output_dir]'
