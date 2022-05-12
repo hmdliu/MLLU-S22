@@ -3,7 +3,7 @@ tmp/
 *.DS_Store
 *.pickle
 *.cluster
-*.pth.tar
+*.json
 *.pth
 *.zip
 *.csv

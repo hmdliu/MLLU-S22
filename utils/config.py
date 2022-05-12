@@ -72,8 +72,20 @@ def get_search_config(dataset: str, delta_type: str, data_ratio: float) -> Dict:
 
     return config
 
-def get_eval_config(dataset: str, delta_type: str, data_ratio: float) -> Dict:
-    raise NotImplementedError
+def get_test_config(dataset: str, delta_type: str, data_ratio: float) -> Dict:
+
+    config = get_search_config(dataset, delta_type, data_ratio)
+    config.output_dir = os.path.abspath(f'./test/{dataset}/{delta_type}/{data_ratio:.3f}')
+    config.hp_path = os.path.abspath(f'./configs/{dataset}_{delta_type}_{data_ratio:.3f}.json')
+    config.do_test = (dataset != 'mnli')
+    config.eval_steps = 500
+    config.save_steps = 500
+    config.logging_steps = 500
+
+    assert os.path.isfile(config.hp_path)
+    os.makedirs(config.output_dir, exist_ok=True)
+
+    return config
 
 def update_dataset_config(config):
     if config.task_name == 'squad':
@@ -127,7 +139,7 @@ class ConfigParser(HfArgumentParser):
         return (*outputs, remain_args) if return_remaining_args else (*outputs,)
 
 if __name__ == '__main__':
-    test_config = get_config(
+    test_config = get_search_config(
         dataset='mnli',
         delta_type='adapter',
         data_ratio=0.1
