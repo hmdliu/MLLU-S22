@@ -12,12 +12,11 @@
 dataset=$1
 delta_type=$2
 data_ratio=$3
-curr_time=$(date +"%Y%m%d_%H%M%S")
 
 # logging dir
 mkdir -p outputs/${dataset}/${delta_type}
 log_dir=outputs/${dataset}/${delta_type}
-log_path=${log_dir}/output_${data_ratio}_${curr_time}.log
+log_path=${log_dir}/output_${data_ratio}.log
 
 # Singularity path
 ext3_path=/scratch/hl3797/overlay-25GB-500K.ext3
